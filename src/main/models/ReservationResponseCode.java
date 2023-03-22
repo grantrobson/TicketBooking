@@ -1,5 +1,5 @@
 package models;
 
 public enum ReservationResponseCode {
-    Success, FailureTooManyTicketsInOneGo, ChildAndInfantTicketsMustBeWithAdult, PaymentFailed
+    Success, FailureTooManyTicketsInOneGo, ChildAndInfantTicketsMustBeWithAdult, PaymentFailed, UnableToReserveSeats
 }

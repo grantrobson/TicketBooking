@@ -10,40 +10,53 @@ import static models.ReservationResponseCode.*;
 import static models.TicketType.*;
 
 
-public class TicketService {
-    private TicketPaymentService ticketPaymentService;
-    public TicketService(TicketPaymentService ticketPaymentService) {
-        this.ticketPaymentService = ticketPaymentService;
-    }
+public final class TicketService {
+    private static final int MaxTicketsPerRequest = 20;
 
-    private static Map<TicketType, BigDecimal> ticketPrices = Map.of(
+    private static final Map<TicketType, BigDecimal> TicketPrices = Map.of(
             Adult, new BigDecimal(20),
             Child, new BigDecimal(10)
     );
+    private final TicketPaymentService ticketPaymentService;
+    private final SeatReservationService seatReservationService;
+
+    public TicketService(TicketPaymentService ticketPaymentService, SeatReservationService seatReservationService) {
+        this.ticketPaymentService = ticketPaymentService;
+        this.seatReservationService = seatReservationService;
+    }
 
     public TicketReservationResult reserve(List<TicketTypeRequest> ttrList, String ccNo) {
         if (ttrList.stream().anyMatch(m -> m.ticketType == Infant || m.ticketType == Child) &&
                 ttrList.stream().noneMatch(m -> m.ticketType == Adult)) {
             return new TicketReservationResult(new BigDecimal(0), ChildAndInfantTicketsMustBeWithAdult);
         } else {
-
             int totalTicketsRequested = ttrList.stream().filter(tr -> tr.ticketType != Infant).mapToInt(tr -> tr.howMany).sum();
-            if (totalTicketsRequested > 20) {
+            if (totalTicketsRequested > MaxTicketsPerRequest) {
                 return new TicketReservationResult(new BigDecimal(0), FailureTooManyTicketsInOneGo);
             } else {
                 BigDecimal totalCost = ttrList.stream()
-                        .map(a -> ticketPrices.getOrDefault(a.ticketType, BigDecimal.ZERO)
+                        .map(a -> TicketPrices.getOrDefault(a.ticketType, BigDecimal.ZERO)
                                 .multiply(new BigDecimal(a.howMany)))
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                TicketPaymentRequest tpr = new TicketPaymentRequest(totalCost, ccNo);
-
-                TicketPaymentResult paymentResult = ticketPaymentService.makePayment(tpr);
-
-                if (paymentResult.paymentResponseCode == PaymentResponseCode.Success) {
-                    return new TicketReservationResult(totalCost, Success);
+                SeatReservationResult seatReservationResult = seatReservationService.reserve(ttrList);
+                System.out.println(seatReservationResult.seatReservationResponseCode);
+                if (seatReservationResult.seatReservationResponseCode == SeatReservationResponseCode.Success) {
+                    TicketPaymentRequest tpr = new TicketPaymentRequest(totalCost, ccNo);
+                    TicketPaymentResult paymentResult = ticketPaymentService.makePayment(tpr);
+                    if (paymentResult.paymentResponseCode == PaymentResponseCode.Success) {
+                        return new TicketReservationResult(totalCost, Success);
+                    } else {
+                        SeatReservationResponseCode seatCancellationResponseCode =
+                                seatReservationService.cancelReservations(seatReservationResult.seatsReserved);
+                        if (seatCancellationResponseCode == SeatReservationResponseCode.Success) {
+                            return new TicketReservationResult(totalCost, PaymentFailed);
+                        } else {
+                            // TODO: Check requirements: could perhaps email someone internally about cancelling seats manually or put on a queue
+                            return new TicketReservationResult(totalCost, PaymentFailed);
+                        }
+                    }
                 } else {
-                    return new TicketReservationResult(totalCost, PaymentFailed);
+                    return new TicketReservationResult(totalCost, UnableToReserveSeats);
                 }
             }
         }
