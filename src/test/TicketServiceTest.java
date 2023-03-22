@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import services.SeatReservationService;
-import services.TicketPaymentService;
+import connectors.SeatReservationConnector;
+import connectors.TicketPaymentConnector;
 import services.TicketService;
 
 import java.math.BigDecimal;
@@ -20,9 +20,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class TicketServiceTest {
     @Mock
-    private TicketPaymentService ticketPaymentService;
+    private TicketPaymentConnector ticketPaymentConnector;
     @Mock
-    private SeatReservationService seatReservationService;
+    private SeatReservationConnector seatReservationConnector;
 
     private final String ccNo = "123456789";
 
@@ -39,11 +39,11 @@ public class TicketServiceTest {
     private static final SeatReservationResult SeatReservationResultUnableReserveSeats =
             new SeatReservationResult(SeatReservationResponseCode.SeatsNotAvailable, List.of());
 
-    private TicketService ticketService() { return new TicketService(ticketPaymentService, seatReservationService); };
+    private TicketService ticketService() { return new TicketService(ticketPaymentConnector, seatReservationConnector); };
 
     @BeforeEach
     public void beforeEach() {
-        reset(ticketPaymentService, seatReservationService);
+        reset(ticketPaymentConnector, seatReservationConnector);
     }
 
     @Test
@@ -85,13 +85,13 @@ public class TicketServiceTest {
                 new TicketTypeRequest(Adult, 10),
                 new TicketTypeRequest(Infant, 1)
         );
-        when(ticketPaymentService.makePayment(any())).thenReturn(TicketPaymentResultSuccess);
-        when(seatReservationService.reserve(any())).thenReturn(SeatReservationResultSuccess);
+        when(ticketPaymentConnector.makePayment(any())).thenReturn(TicketPaymentResultSuccess);
+        when(seatReservationConnector.reserve(any())).thenReturn(SeatReservationResultSuccess);
         TicketReservationResult result = ticketService().reserve(requests, ccNo);
         TicketReservationResult expectedResult = new TicketReservationResult(BigDecimal.valueOf(300), Success);
         assertEqualResults(expectedResult, result);
-        verify(ticketPaymentService, times(1)).makePayment(any());
-        verify(seatReservationService, times(1)).reserve(any());
+        verify(ticketPaymentConnector, times(1)).makePayment(any());
+        verify(seatReservationConnector, times(1)).reserve(any());
     }
 
     @Test
@@ -101,12 +101,12 @@ public class TicketServiceTest {
                 new TicketTypeRequest(Adult, 10),
                 new TicketTypeRequest(Infant, 1)
         );
-        when(seatReservationService.reserve(any())).thenReturn(SeatReservationResultUnableReserveSeats);
+        when(seatReservationConnector.reserve(any())).thenReturn(SeatReservationResultUnableReserveSeats);
         TicketReservationResult result = ticketService().reserve(requests, ccNo);
         TicketReservationResult expectedResult = new TicketReservationResult(BigDecimal.valueOf(300), UnableToReserveSeats);
         assertEqualResults(expectedResult, result);
-        verify(ticketPaymentService, times(0)).makePayment(any());
-        verify(seatReservationService, times(1)).reserve(any());
+        verify(ticketPaymentConnector, times(0)).makePayment(any());
+        verify(seatReservationConnector, times(1)).reserve(any());
     }
 
     @Test
@@ -116,14 +116,14 @@ public class TicketServiceTest {
                 new TicketTypeRequest(Adult, 10),
                 new TicketTypeRequest(Infant, 1)
         );
-        when(ticketPaymentService.makePayment(any())).thenReturn(TicketPaymentResultFailureCCDeclined);
-        when(seatReservationService.reserve(any())).thenReturn(SeatReservationResultSuccess);
-        when(seatReservationService.cancelReservations(any())).thenReturn(SeatReservationResponseCode.Success);
+        when(ticketPaymentConnector.makePayment(any())).thenReturn(TicketPaymentResultFailureCCDeclined);
+        when(seatReservationConnector.reserve(any())).thenReturn(SeatReservationResultSuccess);
+        when(seatReservationConnector.cancelReservations(any())).thenReturn(SeatReservationResponseCode.Success);
         TicketReservationResult result = ticketService().reserve(requests, ccNo);
         TicketReservationResult expectedResult = new TicketReservationResult(BigDecimal.valueOf(300), PaymentFailed);
-        verify(ticketPaymentService, times(1)).makePayment(any());
-        verify(seatReservationService, times(1)).reserve(any());
-        verify(seatReservationService, times(1)).cancelReservations(any());
+        verify(ticketPaymentConnector, times(1)).makePayment(any());
+        verify(seatReservationConnector, times(1)).reserve(any());
+        verify(seatReservationConnector, times(1)).cancelReservations(any());
     }
 
     @Test
@@ -133,14 +133,14 @@ public class TicketServiceTest {
                 new TicketTypeRequest(Adult, 10),
                 new TicketTypeRequest(Infant, 1)
         );
-        when(ticketPaymentService.makePayment(any())).thenReturn(TicketPaymentResultFailureCCDeclined);
-        when(seatReservationService.reserve(any())).thenReturn(SeatReservationResultSuccess);
-        when(seatReservationService.cancelReservations(any())).thenReturn(SeatReservationResponseCode.SeatReservationServiceUnavailable);
+        when(ticketPaymentConnector.makePayment(any())).thenReturn(TicketPaymentResultFailureCCDeclined);
+        when(seatReservationConnector.reserve(any())).thenReturn(SeatReservationResultSuccess);
+        when(seatReservationConnector.cancelReservations(any())).thenReturn(SeatReservationResponseCode.SeatReservationServiceUnavailable);
         TicketReservationResult result = ticketService().reserve(requests, ccNo);
         TicketReservationResult expectedResult = new TicketReservationResult(BigDecimal.valueOf(300), PaymentFailed);
-        verify(ticketPaymentService, times(1)).makePayment(any());
-        verify(seatReservationService, times(1)).reserve(any());
-        verify(seatReservationService, times(1)).cancelReservations(any());
+        verify(ticketPaymentConnector, times(1)).makePayment(any());
+        verify(seatReservationConnector, times(1)).reserve(any());
+        verify(seatReservationConnector, times(1)).cancelReservations(any());
         // TODO: Could verify email service called to inform someone that unable to cancel seat reservations
     }
 

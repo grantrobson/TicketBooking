@@ -1,8 +1,8 @@
-package services;
+package connectors;
 
 import models.TicketPaymentRequest;
 import models.TicketPaymentResult;
 
-public interface TicketPaymentService {
+public interface TicketPaymentConnector {
     TicketPaymentResult makePayment(TicketPaymentRequest ticketPaymentRequest);
 }

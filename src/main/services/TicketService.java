@@ -1,5 +1,7 @@
 package services;
 
+import connectors.SeatReservationConnector;
+import connectors.TicketPaymentConnector;
 import models.*;
 
 import java.math.BigDecimal;
@@ -11,18 +13,19 @@ import static models.TicketType.*;
 
 
 public final class TicketService {
+    // TODO: Move external services to connectors package and make them return Futures
     private static final int MaxTicketsPerRequest = 20;
 
     private static final Map<TicketType, BigDecimal> TicketPrices = Map.of(
             Adult, new BigDecimal(20),
             Child, new BigDecimal(10)
     );
-    private final TicketPaymentService ticketPaymentService;
-    private final SeatReservationService seatReservationService;
+    private final TicketPaymentConnector ticketPaymentConnector;
+    private final SeatReservationConnector seatReservationConnector;
 
-    public TicketService(TicketPaymentService ticketPaymentService, SeatReservationService seatReservationService) {
-        this.ticketPaymentService = ticketPaymentService;
-        this.seatReservationService = seatReservationService;
+    public TicketService(TicketPaymentConnector ticketPaymentConnector, SeatReservationConnector seatReservationConnector) {
+        this.ticketPaymentConnector = ticketPaymentConnector;
+        this.seatReservationConnector = seatReservationConnector;
     }
 
     public TicketReservationResult reserve(List<TicketTypeRequest> ttrList, String ccNo) {
@@ -38,15 +41,15 @@ public final class TicketService {
                         .map(a -> TicketPrices.getOrDefault(a.ticketType, BigDecimal.ZERO)
                                 .multiply(new BigDecimal(a.howMany)))
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-                SeatReservationResult seatReservationResult = seatReservationService.reserve(ttrList);
+                SeatReservationResult seatReservationResult = seatReservationConnector.reserve(ttrList);
                 if (seatReservationResult.seatReservationResponseCode == SeatReservationResponseCode.Success) {
                     TicketPaymentRequest tpr = new TicketPaymentRequest(totalCost, ccNo);
-                    TicketPaymentResult paymentResult = ticketPaymentService.makePayment(tpr);
+                    TicketPaymentResult paymentResult = ticketPaymentConnector.makePayment(tpr);
                     if (paymentResult.paymentResponseCode == PaymentResponseCode.Success) {
                         return new TicketReservationResult(totalCost, Success);
                     } else {
                         SeatReservationResponseCode seatCancellationResponseCode =
-                                seatReservationService.cancelReservations(seatReservationResult.seatsReserved);
+                                seatReservationConnector.cancelReservations(seatReservationResult.seatsReserved);
                         if (seatCancellationResponseCode == SeatReservationResponseCode.Success) {
                             return new TicketReservationResult(totalCost, PaymentFailed);
                         } else {
