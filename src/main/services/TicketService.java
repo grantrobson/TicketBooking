@@ -39,7 +39,6 @@ public final class TicketService {
                                 .multiply(new BigDecimal(a.howMany)))
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 SeatReservationResult seatReservationResult = seatReservationService.reserve(ttrList);
-                System.out.println(seatReservationResult.seatReservationResponseCode);
                 if (seatReservationResult.seatReservationResponseCode == SeatReservationResponseCode.Success) {
                     TicketPaymentRequest tpr = new TicketPaymentRequest(totalCost, ccNo);
                     TicketPaymentResult paymentResult = ticketPaymentService.makePayment(tpr);

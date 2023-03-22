@@ -36,6 +36,9 @@ public class TicketServiceTest {
     private static final SeatReservationResult SeatReservationResultSuccess =
             new SeatReservationResult(SeatReservationResponseCode.Success, List.of("E4", "E5"));
 
+    private static final SeatReservationResult SeatReservationResultUnableReserveSeats =
+            new SeatReservationResult(SeatReservationResponseCode.SeatsNotAvailable, List.of());
+
     private TicketService ticketService() { return new TicketService(ticketPaymentService, seatReservationService); };
 
     @BeforeEach
@@ -92,7 +95,22 @@ public class TicketServiceTest {
     }
 
     @Test
-    public void testMax20Tickets20AdultsAndChildrenAndOneInfantPaymentFails() {
+    public void testUnableReserveSeats() {
+        List<TicketTypeRequest> requests = List.of(
+                new TicketTypeRequest(Child, 10),
+                new TicketTypeRequest(Adult, 10),
+                new TicketTypeRequest(Infant, 1)
+        );
+        when(seatReservationService.reserve(any())).thenReturn(SeatReservationResultUnableReserveSeats);
+        TicketReservationResult result = ticketService().reserve(requests, ccNo);
+        TicketReservationResult expectedResult = new TicketReservationResult(BigDecimal.valueOf(300), UnableToReserveSeats);
+        assertEqualResults(expectedResult, result);
+        verify(ticketPaymentService, times(0)).makePayment(any());
+        verify(seatReservationService, times(1)).reserve(any());
+    }
+
+    @Test
+    public void testPaymentFails() {
         List<TicketTypeRequest> requests = List.of(
                 new TicketTypeRequest(Child, 10),
                 new TicketTypeRequest(Adult, 10),
@@ -109,7 +127,7 @@ public class TicketServiceTest {
     }
 
     @Test
-    public void testMax20Tickets20AdultsAndChildrenAndOneInfantPaymentFailsUnableCancelSeats() {
+    public void testSeatReservationFailsUnableCancelSeats() {
         List<TicketTypeRequest> requests = List.of(
                 new TicketTypeRequest(Child, 10),
                 new TicketTypeRequest(Adult, 10),

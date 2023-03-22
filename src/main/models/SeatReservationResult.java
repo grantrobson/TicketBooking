@@ -9,6 +9,5 @@ public final class SeatReservationResult {
     public SeatReservationResult(SeatReservationResponseCode seatReservationResponseCode, List<String> seatsReserved) {
         this.seatReservationResponseCode = seatReservationResponseCode;
         this.seatsReserved = seatsReserved;
-        seatsReserved.add(0, "rte");
     }
 }
