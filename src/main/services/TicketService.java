@@ -50,7 +50,9 @@ public final class TicketService {
                         if (seatCancellationResponseCode == SeatReservationResponseCode.Success) {
                             return new TicketReservationResult(totalCost, PaymentFailed);
                         } else {
-                            // TODO: Check requirements: could perhaps email someone internally about cancelling seats manually or put on a queue
+                            // TODO: Check requirements:-
+                            //   - could perhaps email someone internally about cancelling seats manually or put on a queue to auto-retry later
+                            //   - or if one of the services (payment service maybe?) is capable of 2 phase commit then could roll back.
                             return new TicketReservationResult(totalCost, PaymentFailed);
                         }
                     }
