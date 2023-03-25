@@ -33,22 +33,22 @@ public final class TicketService {
                 ttrList.stream().noneMatch(m -> m.ticketType == Adult)) {
             return new TicketReservationResult(new BigDecimal(0), ChildAndInfantTicketsMustBeWithAdult);
         } else {
-            int totalTicketsRequested = ttrList.stream().filter(tr -> tr.ticketType != Infant).mapToInt(tr -> tr.howMany).sum();
+            final int totalTicketsRequested = ttrList.stream().filter(tr -> tr.ticketType != Infant).mapToInt(tr -> tr.howMany).sum();
             if (totalTicketsRequested > MaxTicketsPerRequest) {
                 return new TicketReservationResult(new BigDecimal(0), FailureTooManyTicketsInOneGo);
             } else {
-                BigDecimal totalCost = ttrList.stream()
+                final BigDecimal totalCost = ttrList.stream()
                         .map(a -> TicketPrices.getOrDefault(a.ticketType, BigDecimal.ZERO)
                                 .multiply(new BigDecimal(a.howMany)))
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 SeatReservationResult seatReservationResult = seatReservationConnector.reserve(ttrList);
                 if (seatReservationResult.seatReservationResponseCode == SeatReservationResponseCode.Success) {
-                    TicketPaymentRequest tpr = new TicketPaymentRequest(totalCost, ccNo);
-                    TicketPaymentResult paymentResult = ticketPaymentConnector.makePayment(tpr);
+                    final TicketPaymentRequest tpr = new TicketPaymentRequest(totalCost, ccNo);
+                    final TicketPaymentResult paymentResult = ticketPaymentConnector.makePayment(tpr);
                     if (paymentResult.paymentResponseCode == PaymentResponseCode.Success) {
                         return new TicketReservationResult(totalCost, Success);
                     } else {
-                        SeatReservationResponseCode seatCancellationResponseCode =
+                        final SeatReservationResponseCode seatCancellationResponseCode =
                                 seatReservationConnector.cancelReservations(seatReservationResult.seatsReserved);
                         if (seatCancellationResponseCode == SeatReservationResponseCode.Success) {
                             return new TicketReservationResult(totalCost, PaymentFailed);
